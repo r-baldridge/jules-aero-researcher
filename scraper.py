@@ -252,6 +252,7 @@ def main():
         brave_results = []
 
     all_results = nasa_results + faa_results + brave_results
+    all_results = nasa_results + faa_results
     new_entries_count = 0
 
     for item in all_results:
