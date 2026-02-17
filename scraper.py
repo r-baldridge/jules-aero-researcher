@@ -328,6 +328,54 @@ def fetch_faa_data():
     print(f"Found {len(results)} items from FAA.")
     return results
 
+def fetch_brave_data(query, api_key):
+    """
+    Fetches data from Brave Search API.
+    """
+    print(f"Fetching Brave Search data for query: {query}")
+    url = "https://api.search.brave.com/res/v1/web/search"
+    params = {
+        "q": query
+    }
+    headers = {
+        "X-Subscription-Token": api_key,
+        "Accept": "application/json"
+    }
+
+    try:
+        response = requests.get(url, params=params, headers=headers)
+        if response.status_code == 403:
+            print("Error fetching Brave data: Invalid API Key")
+            return []
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        print(f"Error fetching Brave data: {e}")
+        return []
+
+    results = []
+    # Brave response structure: data['web']['results'] -> list of items
+    web_results = data.get("web", {}).get("results", [])
+
+    for item in web_results:
+        title = item.get("title", "No Title")
+        url = item.get("url")
+        description = item.get("description", "")
+
+        if not url:
+            continue
+
+        results.append({
+            "title": title,
+            "url": url,
+            "abstract": description,
+            "source": "Brave Search",
+            "relevance": query
+        })
+
+    print(f"Found {len(results)} items from Brave Search.")
+    return results
+
 def load_seen_ids():
     """
     Loads seen IDs from seen_ids.json.
@@ -395,6 +443,20 @@ def main():
     openalex_results = fetch_openalex_data()
 
     all_results = nasa_results + faa_results + arxiv_results + openalex_results
+    seen_ids = load_seen_ids()
+
+    nasa_results = fetch_nasa_data()
+    faa_results = fetch_faa_data()
+
+    brave_api_key = os.environ.get("BRAVE_API_KEY")
+    if brave_api_key:
+        brave_results = fetch_brave_data("aerospace engineering structural analysis", brave_api_key)
+    else:
+        print("BRAVE_API_KEY not found. Skipping Brave Search.")
+        brave_results = []
+
+    all_results = nasa_results + faa_results + brave_results
+    all_results = nasa_results + faa_results
     new_entries_count = 0
 
     for item in all_results:
